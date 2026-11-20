@@ -1,0 +1,4 @@
+{
+  "supabaseUrl": "https://YOUR-PROJECT-REF.supabase.co",
+  "supabasePublishableKey": "sb_publishable_REPLACE_ME"
+}

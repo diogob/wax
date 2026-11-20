@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "lib": ["deno.ns", "dom", "dom.iterable", "esnext"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "imports": {
+    "preact": "npm:preact@^11.2.0",
+    "preact/": "npm:/preact@^11.2.0/",
+    "@preact/signals": "npm:@preact/signals@^2.11.4",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@^2.119.2",
+    "postgres": "npm:postgres@^4.1.1",
+    "openpgp": "npm:openpgp@^6",
+    "@std/expect": "jsr:@std/expect@^1.0.20",
+    "@std/http/": "jsr:/@std/http@^1.1.4/"
+  },
+  "tasks": {
+    "dev": "deno run -A scripts/dev.ts",
+    "build": "rm -rf dist && deno bundle --platform browser --minify --outdir dist web/index.html && cp -R web/public/. dist/ && cp config/production.json dist/config.json",
+    "check": "deno check web/src supabase/functions tests scripts && deno lint && deno fmt --check",
+    "fmt": "deno fmt",
+    "psql": "psql \"$(supabase status -o json | jq -r .DB_URL)\"",
+    "repl": "deno repl -A --env-file=.env.local --eval \"await import('./scripts/repl.ts')\"",
+    "test:reset": "supabase db reset && scripts/local-env.sh && deno run -A --env-file=.env.local scripts/wait-ready.ts",
+    "test": {
+      "command": "deno test -A --env-file=.env.local",
+      "dependencies": ["test:reset"]
+    },
+    "gen:types": "supabase gen types typescript --local --schema api,service > supabase/functions/_shared/db.types.ts && deno fmt supabase/functions/_shared/db.types.ts"
+  },
+  "fmt": {
+    "lineWidth": 100,
+    "exclude": ["dist/", "supabase/.temp/"]
+  },
+  "lint": {
+    "exclude": ["dist/", "supabase/.temp/"]
+  },
+  "exclude": ["dist/"]
+}
