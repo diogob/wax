@@ -11,38 +11,49 @@ How the browser talks to Supabase, per flow. Statement formats: `docs/statements
 
 ## Flows
 
-| Flow | Browser calls | Server side |
-|---|---|---|
-| Choose username | `api.claim_username(name)` | — |
-| Get a key challenge | `key-challenge` `{publicKey}` → `{challenge}` | `service.create_key_challenge` (stores nonce, 10 min) |
-| Publish a key | `publish-key` `{publicKey, signed}` | `service.publish_key` (uses the nonce, supersedes the old key) |
-| Get GitHub proof text | `proof-statement` `{github}` → `{statement}` | reads the caller's current key |
-| Add GitHub proof | `verify-proof` `{gistUrl}` | fetches the gist; `service.add_github_proof` |
-| Remove a proof | `api.remove_github_proof(id)` | — |
-| Get message command | `message-template` `{to}` → `{command}` (`Id`, `Sent` filled in) | reads both current keys |
-| Send a message | `send-message` `{signed}` | `service.store_message`, notification email |
-| Revoke a key | `revoke-key` `{revocation}` | `service.revoke_key` |
-| View a profile | `api.profile(username)` | — |
-| Search | `api.search(query)` | — |
-| Inbox / outbox | `api.inbox()`, `api.outbox()`, `api.message(id)` | — |
-| Set trust in a sender | `api.set_trust(username, level)` | — |
+| Flow                  | Browser calls                                                    | Server side                                                    |
+| --------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------- |
+| Choose username       | `api.claim_username(name)`                                       | —                                                              |
+| Get a key challenge   | `key-challenge` `{publicKey}` → `{challenge}`                    | `service.create_key_challenge` (stores nonce, 10 min)          |
+| Publish a key         | `publish-key` `{publicKey, signed}`                              | `service.publish_key` (uses the nonce, supersedes the old key) |
+| Get GitHub proof text | `proof-statement` `{github}` → `{statement}`                     | reads the caller's current key                                 |
+| Add GitHub proof      | `verify-proof` `{gistUrl}`                                       | fetches the gist; `service.add_github_proof`                   |
+| Remove a proof        | `api.remove_github_proof(id)`                                    | —                                                              |
+| Get message command   | `message-template` `{to}` → `{command}` (`Id`, `Sent` filled in) | reads both current keys                                        |
+| Send a message        | `send-message` `{signed}`                                        | `service.store_message`, notification email                    |
+| Revoke a key          | `revoke-key` `{revocation}`                                      | `service.revoke_key`                                           |
+| View a profile        | `api.profile(username)`                                          | —                                                              |
+| Search                | `api.search(query)`                                              | —                                                              |
+| Inbox / outbox        | `api.inbox()`, `api.outbox()`, `api.message(id)`                 | —                                                              |
+| Set trust in a sender | `api.set_trust(username, level)`                                 | —                                                              |
 
 Error codes per call are added as each flow is implemented.
+
+### `api.claim_username(name)` → `name`
+
+`name`: 2–32 of `a-z 0-9 _ -`, starting with a letter or digit (same as `User` in statements). Once
+claimed, it can't be changed.
+
+| Code    | When                                                |
+| ------- | --------------------------------------------------- |
+| `42501` | not signed in (anon has no EXECUTE)                 |
+| `WX003` | invalid format                                      |
+| `WX004` | caller already has a username, or the name is taken |
 
 ## Trust
 
 Anyone with a published key can message anyone with one. Each recipient privately rates senders;
 only the recipient sees their ratings, and the sender is never told.
 
-| Level | Set by | Inbox |
-|---|---|---|
-| `unknown` | default | sender profile + proofs; content hidden behind "Show message" |
-| `accepted` | "Show message" | content shown |
-| `ignored` | "Ignore" | messages hidden |
+| Level      | Set by         | Inbox                                                         |
+| ---------- | -------------- | ------------------------------------------------------------- |
+| `unknown`  | default        | sender profile + proofs; content hidden behind "Show message" |
+| `accepted` | "Show message" | content shown                                                 |
+| `ignored`  | "Ignore"       | messages hidden                                               |
 
-- One knock: `send-message` rejects a message from an `unknown` sender while a previous message
-  from them to the same recipient is unread. A message is read once the recipient clicks "Show
-  message" or "Ignore"; being listed in the inbox doesn't count.
+- One knock: `send-message` rejects a message from an `unknown` sender while a previous message from
+  them to the same recipient is unread. A message is read once the recipient clicks "Show message"
+  or "Ignore"; being listed in the inbox doesn't count.
 - Ignored senders are not told: `send-message` accepts their messages as usual. The first 10, within
   30 days of the ignore, are stored hidden; after either limit is reached, new ones are dropped
   without being stored. The sender sees a normal success either way.

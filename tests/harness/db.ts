@@ -43,5 +43,10 @@ function uid(): string {
   return crypto.randomUUID().replaceAll("-", "");
 }
 
-export { as, closeSql, sql, uid };
+/** Unique, valid Wax username. */
+function uniqueUsername(): string {
+  return `u${uid().slice(0, 20)}`;
+}
+
+export { as, closeSql, sql, uid, uniqueUsername };
 export type { As, Tx };
