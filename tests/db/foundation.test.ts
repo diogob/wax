@@ -67,24 +67,6 @@ describe("immutability guard", () => {
 });
 
 describe("catalog invariants", () => {
-  it("every object in private/api/service is owned by wax_owner", async () => {
-    const offenders = await sql()`
-      select n.nspname || '.' || c.relname as obj from pg_class c
-      join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname in ('private', 'api', 'service') and c.relowner <> 'wax_owner'::regrole
-      union all
-      select n.nspname || '.' || p.proname from pg_proc p
-      join pg_namespace n on n.oid = p.pronamespace
-      where n.nspname in ('private', 'api', 'service') and p.proowner <> 'wax_owner'::regrole
-      union all
-      select n.nspname || '.' || t.typname from pg_type t
-      join pg_namespace n on n.oid = t.typnamespace
-      where n.nspname in ('private', 'api', 'service') and t.typowner <> 'wax_owner'::regrole
-      union all
-      select nspname from pg_namespace
-      where nspname in ('private', 'api', 'service') and nspowner <> 'wax_owner'::regrole`;
-    expect(offenders.map((row) => row.obj)).toEqual([]);
-  });
   it("every private table has RLS and the immutability guard", async () => {
     const offenders = await sql()`
       select c.relname

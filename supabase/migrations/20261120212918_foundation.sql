@@ -5,32 +5,22 @@
 --   api      RPCs callable by anon/authenticated (exposed)
 --   service  RPCs callable only by service_role, i.e. Edge Functions (exposed)
 --
--- Migrations: start with `set role wax_owner;` and end with `reset role;` so every object
--- is owned by wax_owner (enforced by tests/db/foundation.test.ts).
---
 -- Error codes (SQLSTATE class WX):
 --   WX001  immutable_row
+--   WX002  unauthorized   (no signed-in user)
+--   WX003  bad_request    (input fails validation)
+--   WX004  conflict       (clashes with existing data)
 
 create extension if not exists citext with schema extensions;
 create extension if not exists pgcrypto with schema extensions;
 
--- wax_owner owns every Wax schema and object. It cannot log in. postgres (which runs
--- migrations and is used by tests/psql) is a member, inherits its privileges, and
--- switches to it with `set role wax_owner` so new objects are owned by wax_owner.
-create role wax_owner nologin;
-grant wax_owner to postgres with set true, inherit true;
-grant usage on schema extensions to wax_owner;
+create schema private;
+create schema api;
+create schema service;
 
-create schema private authorization wax_owner;
-create schema api authorization wax_owner;
-create schema service authorization wax_owner;
-
--- Every migration runs its DDL as wax_owner.
-set role wax_owner;
-
--- Functions get EXECUTE for PUBLIC by default. Remove that for everything wax_owner
+-- Functions get EXECUTE for PUBLIC by default. Remove that for everything postgres
 -- creates; grant explicitly per function instead.
-alter default privileges for role wax_owner revoke execute on functions from public;
+alter default privileges for role postgres revoke execute on functions from public;
 
 -- Lock everything down; grant explicitly per object later.
 revoke all on schema private, api, service from public;
@@ -139,4 +129,3 @@ as $$ select 'ok'::text; $$;
 
 grant execute on function api.health() to anon, authenticated;
 
-reset role;
