@@ -25,5 +25,27 @@ How the browser talks to Supabase, per flow. Statement formats: `docs/statements
 | View a profile | `api.profile(username)` | — |
 | Search | `api.search(query)` | — |
 | Inbox / outbox | `api.inbox()`, `api.outbox()`, `api.message(id)` | — |
+| Set trust in a sender | `api.set_trust(username, level)` | — |
 
 Error codes per call are added as each flow is implemented.
+
+## Trust
+
+Anyone with a published key can message anyone with one. Each recipient privately rates senders;
+only the recipient sees their ratings, and the sender is never told.
+
+| Level | Set by | Inbox |
+|---|---|---|
+| `unknown` | default | sender profile + proofs; content hidden behind "Show message" |
+| `accepted` | "Show message" | content shown |
+| `ignored` | "Ignore" | messages hidden |
+
+- One knock: `send-message` rejects a message from an `unknown` sender while a previous message
+  from them to the same recipient is unread. A message is read once the recipient clicks "Show
+  message" or "Ignore"; being listed in the inbox doesn't count.
+- Ignored senders are not told: `send-message` accepts their messages as usual. The first 10, within
+  30 days of the ignore, are stored hidden; after either limit is reached, new ones are dropped
+  without being stored. The sender sees a normal success either way.
+- New-message email: sent for `unknown` (the knock) and `accepted` senders, never for `ignored`.
+- Out of scope: a `known` level, introductions (later, as an explicit action by the introducer),
+  signed vouching (`gpg --sign-key`).
