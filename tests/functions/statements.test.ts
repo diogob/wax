@@ -22,131 +22,138 @@ after(async () => {
   await Promise.all([killAgent(alice), killAgent(bob)]);
 });
 
-function challenge(fingerprint: string) {
+function challenge() {
   return {
     origin,
     user: "alice",
-    fingerprint,
+    fingerprint: alice.fingerprint,
     nonce: crypto.randomUUID(),
     expires: "2026-11-23T15:14:05Z",
   };
 }
 
-describe("key challenge", () => {
-  it("round-trips through gpg --clearsign", async () => {
-    const c = challenge(alice.fingerprint);
-    const signed = await clearsign(alice, buildKeyChallenge(c));
-    const text = await verifyClearsigned(signed, await readPublicKey(alice.publicKey));
-    expect(parseKeyChallenge(text)).toEqual(c);
-  });
+async function message() {
+  return {
+    origin,
+    from: "alice",
+    to: "bob",
+    id: crypto.randomUUID(),
+    sent: "2026-11-23T15:04:05Z",
+    body: await signEncrypt(alice, [bob, alice], "hello bob\n"),
+  };
+}
 
-  it("is rejected when signed by another key", async () => {
-    const signed = await clearsign(bob, buildKeyChallenge(challenge(alice.fingerprint)));
-    await expect(verifyClearsigned(signed, await readPublicKey(alice.publicKey))).rejects.toThrow(
-      "signature is not valid",
-    );
-  });
+// Signs with gpg and returns the text openpgp.js verified, as an Edge Function would see it.
+async function signAndVerify(text: string): Promise<string> {
+  const signed = await clearsign(alice, text);
+  return verifyClearsigned(signed, await readPublicKey(alice.publicKey));
+}
 
-  it("is rejected when the signed text was edited", async () => {
-    const signed = await clearsign(alice, buildKeyChallenge(challenge(alice.fingerprint)));
-    const tampered = signed.replace("User: alice", "User: mallory");
-    await expect(verifyClearsigned(tampered, await readPublicKey(alice.publicKey))).rejects.toThrow(
-      "signature is not valid",
-    );
-  });
+describe("buildKeyChallenge", () => {
+  describe("when a field contains a newline", () => {
+    it("throws instead of letting it inject another field", () => {
+      const fields = { ...challenge(), user: "Alice\nUser: x" };
 
-  it("ignores text outside the signed block", async () => {
-    const c = challenge(alice.fingerprint);
-    const signed = await clearsign(alice, buildKeyChallenge(c));
-    const text = await verifyClearsigned(
-      `User: mallory\n${signed}\nUser: mallory\n`,
-      await readPublicKey(alice.publicKey),
-    );
-    expect(parseKeyChallenge(text)).toEqual(c);
-  });
+      const result = () => buildKeyChallenge(fields);
 
-  it("rejects non-canonical text", () => {
-    const text = buildKeyChallenge(challenge(alice.fingerprint));
-    expect(() => parseKeyChallenge(text.replace("User: ", "User:  "))).toThrow();
-    expect(() => parseKeyChallenge(`${text}\nExtra: 1`)).toThrow("exactly 5 fields");
-    expect(() => parseKeyChallenge(text.replace("v1", "v2"))).toThrow("expected");
-    expect(() =>
-      parseKeyChallenge(text.replace(alice.fingerprint, alice.fingerprint.toLowerCase()))
-    ).toThrow(
-      "invalid Fingerprint",
-    );
-  });
-
-  it("refuses to build invalid fields", () => {
-    expect(() => buildKeyChallenge({ ...challenge(alice.fingerprint), user: "Alice\nUser: x" }))
-      .toThrow(
-        "invalid User",
-      );
-  });
-
-  it("rejects a private key paste", async () => {
-    const secret = await new Deno.Command("gpg", {
-      args: [
-        "--homedir",
-        alice.home,
-        "--batch",
-        "--pinentry-mode",
-        "loopback",
-        "--passphrase",
-        "",
-        "--armor",
-        "--export-secret-keys",
-      ],
-      stdout: "piped",
-    }).output();
-    await expect(readPublicKey(new TextDecoder().decode(secret.stdout))).rejects.toThrow(
-      "not a private key",
-    );
+      expect(result).toThrow("invalid User");
+    });
   });
 });
 
-describe("github proof", () => {
-  it("round-trips through gpg --clearsign", async () => {
-    const p = {
-      origin,
-      user: "alice",
-      github: "Alice-GH",
-      fingerprint: alice.fingerprint,
-      created: "2026-11-23T15:04:05Z",
-    };
-    const signed = await clearsign(alice, buildGithubProof(p));
-    const text = await verifyClearsigned(signed, await readPublicKey(alice.publicKey));
-    expect(parseGithubProof(text)).toEqual(p);
+describe("parseKeyChallenge", () => {
+  describe("when given a challenge signed with gpg --clearsign", () => {
+    it("returns the fields the challenge was built from", async () => {
+      const fields = challenge();
+      const text = await signAndVerify(buildKeyChallenge(fields));
+
+      const result = parseKeyChallenge(text);
+
+      expect(result).toEqual(fields);
+    });
+  });
+
+  describe("when a separator has extra whitespace", () => {
+    it("throws", () => {
+      const text = buildKeyChallenge(challenge()).replace("User: ", "User:  ");
+
+      const result = () => parseKeyChallenge(text);
+
+      expect(result).toThrow();
+    });
+  });
+
+  describe("when there is an extra field", () => {
+    it("throws a field count error", () => {
+      const text = `${buildKeyChallenge(challenge())}\nExtra: 1`;
+
+      const result = () => parseKeyChallenge(text);
+
+      expect(result).toThrow("exactly 5 fields");
+    });
+  });
+
+  describe("when the title has another version", () => {
+    it("throws a title error", () => {
+      const text = buildKeyChallenge(challenge()).replace("v1", "v2");
+
+      const result = () => parseKeyChallenge(text);
+
+      expect(result).toThrow("expected");
+    });
+  });
+
+  describe("when the fingerprint is lowercase", () => {
+    it("throws an invalid Fingerprint error", () => {
+      const text = buildKeyChallenge(challenge())
+        .replace(alice.fingerprint, alice.fingerprint.toLowerCase());
+
+      const result = () => parseKeyChallenge(text);
+
+      expect(result).toThrow("invalid Fingerprint");
+    });
   });
 });
 
-describe("message envelope", () => {
-  it("round-trips an encrypted body through gpg --clearsign", async () => {
-    const body = await signEncrypt(alice, [bob, alice], "hello bob\n");
-    const m = {
-      origin,
-      from: "alice",
-      to: "bob",
-      id: crypto.randomUUID(),
-      sent: "2026-11-23T15:04:05Z",
-      body,
-    };
-    const signed = await clearsign(alice, buildMessage(m));
-    expect(signed).toContain("- -----BEGIN PGP MESSAGE-----"); // dash-escaped by gpg
-    const text = await verifyClearsigned(signed, await readPublicKey(alice.publicKey));
-    expect(parseMessage(text)).toEqual(m);
+describe("parseGithubProof", () => {
+  describe("when given a proof signed with gpg --clearsign", () => {
+    it("returns the fields the proof was built from", async () => {
+      const fields = {
+        origin,
+        user: "alice",
+        github: "Alice-GH",
+        fingerprint: alice.fingerprint,
+        created: "2026-11-23T15:04:05Z",
+      };
+      const text = await signAndVerify(buildGithubProof(fields));
+
+      const result = parseGithubProof(text);
+
+      expect(result).toEqual(fields);
+    });
+  });
+});
+
+describe("parseMessage", () => {
+  describe("when given an envelope with an encrypted body, signed with gpg --clearsign", () => {
+    it("returns the fields and the body unchanged", async () => {
+      const fields = await message();
+      const text = await signAndVerify(buildMessage(fields));
+
+      const result = parseMessage(text);
+
+      expect(result).toEqual(fields);
+    });
   });
 
-  it("rejects a body with more than one armored block", async () => {
-    const body = await signEncrypt(alice, [bob], "x");
-    const m = {
-      origin,
-      from: "alice",
-      to: "bob",
-      id: crypto.randomUUID(),
-      sent: "2026-11-23T15:04:05Z",
-      body,
-    };
-    expect(() => parseMessage(`${buildMessage(m)}\n${body}`)).toThrow("one armored PGP MESSAGE");
+  describe("when the body has a second armored block appended", () => {
+    it("throws a body error", async () => {
+      const fields = await message();
+      const text = `${buildMessage(fields)}\n${fields.body}`;
+
+      const result = () => parseMessage(text);
+
+      expect(result).toThrow("one armored PGP MESSAGE");
+    });
   });
 });

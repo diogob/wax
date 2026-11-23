@@ -46,7 +46,7 @@ async function createGpgKey(name = "Wax Test"): Promise<GpgKey> {
     "never",
   ]);
   const colons = await gpg(home, ["--with-colons", "--list-keys"]);
-  const fingerprint = colons.split("\n").find((l) => l.startsWith("fpr:"))!.split(":")[9]!;
+  const fingerprint = colons.split("\n").find((line) => line.startsWith("fpr:"))!.split(":")[9]!;
   await gpg(home, ["--quick-add-key", fingerprint, "cv25519", "encr", "never"]);
   const publicKey = await gpg(home, ["--armor", "--export", fingerprint]);
   return { home, fingerprint, publicKey };
@@ -63,18 +63,22 @@ async function signEncrypt(
   recipients: GpgKey[],
   text: string,
 ): Promise<string> {
-  for (const r of recipients) {
-    if (r !== sender) await gpg(sender.home, ["--import"], r.publicKey);
+  for (const recipient of recipients) {
+    if (recipient !== sender) await gpg(sender.home, ["--import"], recipient.publicKey);
   }
-  const rs = recipients.flatMap((r) => ["-r", r.fingerprint]);
+  const recipientArgs = recipients.flatMap((recipient) => ["-r", recipient.fingerprint]);
   return (await gpg(sender.home, [
     "--trust-model",
     "always",
     "--sign",
     "--encrypt",
     "--armor",
-    ...rs,
+    ...recipientArgs,
   ], text)).trimEnd();
+}
+
+function exportSecretKey(key: GpgKey): Promise<string> {
+  return gpg(key.home, ["--armor", "--export-secret-keys", key.fingerprint]);
 }
 
 async function killAgent(key: GpgKey): Promise<void> {
@@ -82,5 +86,5 @@ async function killAgent(key: GpgKey): Promise<void> {
     .output();
 }
 
-export { clearsign, createGpgKey, killAgent, signEncrypt };
+export { clearsign, createGpgKey, exportSecretKey, killAgent, signEncrypt };
 export type { GpgKey };

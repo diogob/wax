@@ -90,6 +90,7 @@ function parseHeader(
 }
 
 // Statements are canonical: rebuild from the parsed fields and require an exact match.
+// Users sign `printf '%s\n' "<statement>"`, so verified text ends with one newline; drop it.
 function canonical(text: string): string {
   return text.endsWith("\n") ? text.slice(0, -1) : text;
 }
@@ -99,10 +100,16 @@ function buildKeyChallenge(c: KeyChallenge): string {
 }
 
 function parseKeyChallenge(text: string): KeyChallenge {
-  const t = canonical(text);
-  const c = parseHeader(KEY_CHALLENGE, keyChallengeFields, t.split("\n")) as KeyChallenge;
-  if (buildKeyChallenge(c) !== t) throw new WaxError("bad_request", "statement is not canonical");
-  return c;
+  const canonicalText = canonical(text);
+  const challenge = parseHeader(
+    KEY_CHALLENGE,
+    keyChallengeFields,
+    canonicalText.split("\n"),
+  ) as KeyChallenge;
+  if (buildKeyChallenge(challenge) !== canonicalText) {
+    throw new WaxError("bad_request", "statement is not canonical");
+  }
+  return challenge;
 }
 
 function buildGithubProof(p: GithubProof): string {
@@ -110,10 +117,16 @@ function buildGithubProof(p: GithubProof): string {
 }
 
 function parseGithubProof(text: string): GithubProof {
-  const t = canonical(text);
-  const p = parseHeader(GITHUB_PROOF, githubProofFields, t.split("\n")) as GithubProof;
-  if (buildGithubProof(p) !== t) throw new WaxError("bad_request", "statement is not canonical");
-  return p;
+  const canonicalText = canonical(text);
+  const proof = parseHeader(
+    GITHUB_PROOF,
+    githubProofFields,
+    canonicalText.split("\n"),
+  ) as GithubProof;
+  if (buildGithubProof(proof) !== canonicalText) {
+    throw new WaxError("bad_request", "statement is not canonical");
+  }
+  return proof;
 }
 
 const ARMORED_MESSAGE =
@@ -128,13 +141,15 @@ function buildMessage(m: MessageEnvelope): string {
 }
 
 function parseMessage(text: string): MessageEnvelope {
-  const t = canonical(text);
-  const split = t.indexOf("\n\n");
+  const canonicalText = canonical(text);
+  const split = canonicalText.indexOf("\n\n");
   if (split < 0) throw new WaxError("bad_request", "message has no body");
-  const header = parseHeader(MESSAGE, messageFields, t.slice(0, split).split("\n"));
-  const m = { ...header, body: t.slice(split + 2) } as MessageEnvelope;
-  if (buildMessage(m) !== t) throw new WaxError("bad_request", "statement is not canonical");
-  return m;
+  const header = parseHeader(MESSAGE, messageFields, canonicalText.slice(0, split).split("\n"));
+  const message = { ...header, body: canonicalText.slice(split + 2) } as MessageEnvelope;
+  if (buildMessage(message) !== canonicalText) {
+    throw new WaxError("bad_request", "statement is not canonical");
+  }
+  return message;
 }
 
 export {

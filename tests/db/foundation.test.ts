@@ -83,7 +83,7 @@ describe("catalog invariants", () => {
       union all
       select nspname from pg_namespace
       where nspname in ('private', 'api', 'service') and nspowner <> 'wax_owner'::regrole`;
-    expect(offenders.map((r) => r.obj)).toEqual([]);
+    expect(offenders.map((row) => row.obj)).toEqual([]);
   });
   it("every private table has RLS and the immutability guard", async () => {
     const offenders = await sql()`
@@ -98,7 +98,7 @@ describe("catalog invariants", () => {
           or not exists (select 1 from pg_trigger t
                          where t.tgrelid = c.oid and t.tgname = 'guard_immutable_truncate')
         )`;
-    expect(offenders.map((r) => r.relname)).toEqual([]);
+    expect(offenders.map((row) => row.relname)).toEqual([]);
   });
 
   it("no function in api/service/private is executable by PUBLIC", async () => {
@@ -111,7 +111,7 @@ describe("catalog invariants", () => {
           select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
           where a.grantee = 0 and a.privilege_type = 'EXECUTE'
         )`;
-    expect(offenders.map((r) => r.fn)).toEqual([]);
+    expect(offenders.map((row) => row.fn)).toEqual([]);
   });
 
   it("security definer functions pin search_path", async () => {
@@ -122,6 +122,6 @@ describe("catalog invariants", () => {
       where n.nspname in ('api', 'service', 'private')
         and p.prosecdef
         and not exists (select 1 from unnest(p.proconfig) c where c like 'search_path=%')`;
-    expect(offenders.map((r) => r.fn)).toEqual([]);
+    expect(offenders.map((row) => row.fn)).toEqual([]);
   });
 });

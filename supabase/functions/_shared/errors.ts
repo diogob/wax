@@ -19,9 +19,9 @@ class WaxError extends Error {
 }
 
 function errorResponse(err: unknown): Response {
-  const e = err instanceof WaxError ? err : new WaxError("internal");
+  const error = err instanceof WaxError ? err : new WaxError("internal");
   if (!(err instanceof WaxError)) console.error(err);
-  return json({ error: e.code, message: e.message }, status[e.code]);
+  return json({ error: error.code, message: error.message }, status[error.code]);
 }
 
 function json(body: unknown, init: number | ResponseInit = 200): Response {
