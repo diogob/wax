@@ -9,8 +9,9 @@ everything else on Supabase.
 ## Tests
 
 - Use `node:test` + `@std/expect`. Not `@std/testing/bdd` (deprecated).
-- No rollbacks, no cleanup. Each test creates its own uniquely named data (`uid()`, `createTestUser()`)
-  and only asserts on that. The database is reset once per run (`deno task test`).
+- No rollbacks, no cleanup. Each test creates its own uniquely named data (`uid()`,
+  `createTestUser()`) and only asserts on that. The database is reset once per run
+  (`deno task test`).
 - Test-only tables go in the `scratch` schema, never in `private`.
 - `deno task test [args]` passes args to `deno test` (e.g. a path or `--filter`).
 
