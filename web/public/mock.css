@@ -1,0 +1,242 @@
+/* Styles for the UI mock (web/mock.html). */
+body {
+  margin: 0;
+  line-height: 1.5;
+}
+
+nav {
+  display: flex;
+  gap: 1.25rem;
+  align-items: baseline;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+}
+
+nav .brand {
+  font-weight: 700;
+  margin-right: auto;
+}
+
+a {
+  color: #2a6fdb;
+}
+
+main {
+  padding-bottom: 10rem;
+}
+
+h2 {
+  margin-top: 2rem;
+  font-size: 1.1rem;
+}
+
+input,
+textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  font: inherit;
+}
+
+textarea {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+
+button {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #2a6fdb;
+  background: #2a6fdb;
+  color: white;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.secondary {
+  background: transparent;
+  color: inherit;
+  border-color: color-mix(in srgb, currentColor 30%, transparent);
+}
+
+button.danger {
+  background: #c0392b;
+  border-color: #c0392b;
+}
+
+button.mock {
+  background: transparent;
+  color: #b7791f;
+  border: 1px dashed #b7791f;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+code,
+pre {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+
+.copybox {
+  position: relative;
+  margin: 1rem 0;
+}
+
+.copybox pre {
+  margin: 0;
+  padding: 1rem;
+  padding-right: 5rem;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.copybox button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.hint {
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.error {
+  color: #c0392b;
+}
+
+.notice {
+  padding: 0.75rem 1rem;
+  border-left: 3px solid #b7791f;
+  background: color-mix(in srgb, #b7791f 10%, transparent);
+}
+
+.ok {
+  color: #2e8b57;
+  margin-left: 0.5rem;
+}
+
+.stale {
+  color: #b7791f;
+  margin-left: 0.5rem;
+}
+
+.steps {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.steps li::before {
+  content: "○ ";
+}
+
+.steps li.done::before {
+  content: "● ";
+}
+
+.steps li.current {
+  font-weight: 700;
+}
+
+.steps li.current::before {
+  content: "◉ ";
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary span {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.results,
+.messages {
+  list-style: none;
+  padding: 0;
+}
+
+.results li,
+.messages li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.messages li.unread a {
+  font-weight: 700;
+}
+
+.messages li.unknown {
+  flex-direction: column;
+  padding: 1rem;
+  margin: 0.5rem 0;
+  border: 1px dashed color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 6px;
+}
+
+.messages li.unknown p {
+  margin: 0;
+}
+
+.mock-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  background: color-mix(in srgb, #b7791f 15%, Canvas);
+  border-top: 1px dashed #b7791f;
+}
+
+.mock-controls button {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.6rem;
+}
+
+.drop {
+  display: block;
+  margin: 1rem 0 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+  border: 2px dashed color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.drop.dragging {
+  border-color: #2a6fdb;
+  background: color-mix(in srgb, #2a6fdb 10%, transparent);
+}
+
+.drop input {
+  display: none;
+}

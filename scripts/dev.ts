@@ -28,6 +28,7 @@ new Deno.Command(Deno.execPath(), {
     "--outdir",
     "dist",
     "web/index.html",
+    "web/mock.html", // UI mock, dev only: http://127.0.0.1:5173/mock.html
   ],
 }).spawn();
 

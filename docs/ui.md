@@ -4,8 +4,11 @@ Pages and user flows. Calls: `docs/contracts.md`. Statements: `docs/statements.m
 
 ## Rules
 
-- The client never handles private keys or plaintext. Private-key steps are a command to copy and
-  its output to paste back.
+- The client never handles private keys or plaintext. Private-key steps are a command to copy; the
+  command writes its output to a named `wax-….asc` file (`gpg --output`), which the user drops on
+  the page or picks with a file dialog. Files work the same on every OS, and the user keeps them to
+  refer to later (e.g. the GitHub proof is uploaded to the gist as that file). Messages are
+  downloaded as files too. Names include the fingerprint or message id, so they never collide.
 - One copy button per page. A flow that needs more than one command becomes a wizard, one page per
   command (decided per flow).
 - Messages have no subject: everything a sender writes is encrypted. A cold message is judged by its
@@ -27,16 +30,22 @@ Pages and user flows. Calls: `docs/contracts.md`. Statements: `docs/statements.m
 ## Flows
 
 1. **Sign up**: email → magic link → choose username (a signed-in user without one is always sent
-   here) → publish key: paste public key → copy the challenge command → paste its output → `#/me`.
-   Without a key you can browse but not send or receive; the page says why.
+   here) → publish key: enter its fingerprint → copy the export command → drop the file → copy the
+   challenge command → drop its output file → `#/me`. Without a key you can browse but not send or
+   receive; the page says why.
 2. **GitHub proof** (`#/me`): enter GitHub username → copy the proof command → create a public gist
-   with the output → paste its URL → verified, or the reason it failed.
+   from the output file → paste its URL → verified, or the reason it failed.
 3. **Send**: search or open a profile (fingerprint, proofs, stale proofs after a key change, key
-   history) → "Send message" → copy the command → paste its output. If one knock applies, say so.
+   history) → "Send message" (one page) → download `wax-key-<user>-<fingerprint>.asc` → copy the
+   command, which encrypts to that file with `gpg -f` (no import), type the message → drop its
+   output file. If one knock applies, say so.
 4. **Inbox**: rows show sender, time and trust.
    - `unknown`: sender's profile summary, "Show message" and "Ignore".
-   - `accepted`: the decrypt command.
+   - `accepted`: open the message: download `wax-from-<user>-<id>.asc` and the sender's key
+     `wax-key-<user>-<fingerprint>.asc`, then copy `gpg --import <key> && gpg --decrypt <file>`.
+     Importing lets gpg check the inner signature; re-importing a known key is harmless.
    - `ignored`: not listed.
-5. **Outbox**: recipient, time and the decrypt command (messages are encrypted to the sender too).
-6. **Settings**: replace key (same as publishing), revoke key (paste `gpg --gen-revoke` output),
-   ignored senders with "Un-ignore", delete account, sign out.
+5. **Outbox**: recipient and time; a message downloads as `wax-sent-to-<user>-<id>.asc`, then
+   `gpg --decrypt <file>` (messages are encrypted to the sender too; no import needed).
+6. **Settings**: replace key (same as publishing), revoke key (drop the `gpg --gen-revoke` output
+   file), ignored senders with "Un-ignore", delete account, sign out.
