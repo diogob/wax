@@ -5,7 +5,7 @@ import { WaxError } from "./errors.ts";
  * Resolves the caller's user id from their JWT.
  * Never trust a user id sent in the request body.
  */
-export async function requireUser(
+async function requireUser(
   req: Request,
 ): Promise<{ userId: string; authorization: string }> {
   const authorization = req.headers.get("authorization");
@@ -16,3 +16,5 @@ export async function requireUser(
 
   return { userId: data.user.id, authorization };
 }
+
+export { requireUser };

@@ -3,7 +3,7 @@ import type { Api } from "./supabase.ts";
 
 const health = signal<"checking" | "ok" | "down">("checking");
 
-export function App({ api }: { api: Api }) {
+function App({ api }: { api: Api }) {
   if (health.peek() === "checking") {
     api.rpc("health").then(({ data, error }) => {
       health.value = !error && data === "ok" ? "ok" : "down";
@@ -17,3 +17,5 @@ export function App({ api }: { api: Api }) {
     </main>
   );
 }
+
+export { App };

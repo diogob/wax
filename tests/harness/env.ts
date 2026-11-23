@@ -6,7 +6,7 @@ function requireEnv(name: string): string {
   return value;
 }
 
-export const env = {
+const env = {
   get url() {
     return requireEnv("SUPABASE_URL");
   },
@@ -20,3 +20,5 @@ export const env = {
     return requireEnv("SUPABASE_DB_URL");
   },
 };
+
+export { env };

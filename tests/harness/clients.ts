@@ -5,7 +5,7 @@ import { env } from "./env.ts";
 
 const noSession = { persistSession: false, autoRefreshToken: false };
 
-export function anonClient(): Api {
+function anonClient(): Api {
   return createClient<Database, "api">(env.url, env.publishableKey, {
     db: { schema: "api" },
     auth: noSession,
@@ -13,17 +13,17 @@ export function anonClient(): Api {
 }
 
 /** Setup only. Bypasses RLS: never assert behaviour through it. */
-export function adminClient(): Api {
+function adminClient(): Api {
   return createClient<Database, "api">(env.url, env.serviceKey, {
     db: { schema: "api" },
     auth: noSession,
   });
 }
 
-export type TestUser = { id: string; email: string; client: Api };
+type TestUser = { id: string; email: string; client: Api };
 
 /** Creates a confirmed user with a unique email and returns a client signed in as them. */
-export async function createTestUser(): Promise<TestUser> {
+async function createTestUser(): Promise<TestUser> {
   const email = `test-${crypto.randomUUID()}@wax.test`;
   const password = crypto.randomUUID();
 
@@ -40,3 +40,6 @@ export async function createTestUser(): Promise<TestUser> {
 
   return { id: data.user.id, email, client };
 }
+
+export { adminClient, anonClient, createTestUser };
+export type { TestUser };

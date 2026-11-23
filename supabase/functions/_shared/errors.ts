@@ -1,5 +1,5 @@
 // Error codes shared by all Edge Functions. Keep in sync with SQLSTATE codes (class WX).
-export type ErrorCode =
+type ErrorCode =
   | "unauthorized"
   | "bad_request"
   | "not_implemented"
@@ -12,19 +12,19 @@ const status: Record<ErrorCode, number> = {
   internal: 500,
 };
 
-export class WaxError extends Error {
+class WaxError extends Error {
   constructor(public code: ErrorCode, message: string = code) {
     super(message);
   }
 }
 
-export function errorResponse(err: unknown): Response {
+function errorResponse(err: unknown): Response {
   const e = err instanceof WaxError ? err : new WaxError("internal");
   if (!(err instanceof WaxError)) console.error(err);
   return json({ error: e.code, message: e.message }, status[e.code]);
 }
 
-export function json(body: unknown, init: number | ResponseInit = 200): Response {
+function json(body: unknown, init: number | ResponseInit = 200): Response {
   const opts = typeof init === "number" ? { status: init } : init;
   return new Response(JSON.stringify(body), {
     ...opts,
@@ -32,8 +32,11 @@ export function json(body: unknown, init: number | ResponseInit = 200): Response
   });
 }
 
-export const corsHeaders = {
+const corsHeaders = {
   "access-control-allow-origin": "*",
   "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
   "access-control-allow-methods": "POST, OPTIONS",
 };
+
+export { corsHeaders, errorResponse, json, WaxError };
+export type { ErrorCode };

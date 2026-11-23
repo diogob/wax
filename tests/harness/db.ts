@@ -6,19 +6,19 @@ import { env } from "./env.ts";
 
 let pool: postgres.Sql | undefined;
 
-export function sql(): postgres.Sql {
+function sql(): postgres.Sql {
   pool ??= postgres(env.dbUrl, { max: 4, onnotice: () => {} });
   return pool;
 }
 
-export async function closeSql() {
+async function closeSql() {
   await pool?.end();
   pool = undefined;
 }
 
-export type Tx = postgres.TransactionSql;
+type Tx = postgres.TransactionSql;
 
-export type As =
+type As =
   | { role: "anon" }
   | { role: "authenticated"; userId: string }
   | { role: "service_role" };
@@ -27,7 +27,7 @@ export type As =
  * Runs fn in a committed transaction impersonating a PostgREST request (role + JWT claims),
  * so auth.uid() and RLS behave as in production.
  */
-export function as<T>(who: As, fn: (tx: Tx) => Promise<T>): Promise<T> {
+function as<T>(who: As, fn: (tx: Tx) => Promise<T>): Promise<T> {
   return sql().begin(async (tx) => {
     const claims = who.role === "authenticated"
       ? { role: who.role, sub: who.userId }
@@ -39,6 +39,9 @@ export function as<T>(who: As, fn: (tx: Tx) => Promise<T>): Promise<T> {
 }
 
 /** Unique suffix for identifiers/data created by a test. */
-export function uid(): string {
+function uid(): string {
   return crypto.randomUUID().replaceAll("-", "");
 }
+
+export { as, closeSql, sql, uid };
+export type { As, Tx };
