@@ -49,6 +49,14 @@ async function publishFirstKey(user: { id: string; username: string }): Promise<
   return fingerprint;
 }
 
+function revoke(user: { id: string }, fingerprint: string, revocation = "revocation") {
+  return as({ role: "service_role" }, async (tx) => {
+    const [row] = await tx`
+      select service.revoke_key(${user.id}, ${fingerprint}, ${revocation}) as revocation`;
+    return row!.revocation as string;
+  });
+}
+
 describe("create_key_challenge", () => {
   describe("when the user has a username", () => {
     it("returns it for the statement's User", async () => {
@@ -204,6 +212,102 @@ describe("publish_key", () => {
   });
 });
 
+describe("publish_key after a revocation", () => {
+  describe("when the current key was revoked and replaces is omitted", () => {
+    it("returns the new fingerprint", async () => {
+      const user = await userWithName();
+      await revoke(user, await publishFirstKey(user));
+      const fingerprint = uniqueFingerprint();
+      const nonce = await createChallenge(user.id, fingerprint);
+
+      const result = await publish(user, nonce, fingerprint);
+
+      expect(result).toBe(fingerprint);
+    });
+  });
+});
+
+describe("revoke_key", () => {
+  describe("when the key is the user's", () => {
+    it("returns the stored revocation", async () => {
+      const user = await userWithName();
+      const fingerprint = await publishFirstKey(user);
+
+      const result = await revoke(user, fingerprint, "first");
+
+      expect(result).toBe("first");
+    });
+  });
+
+  describe("when the key was already revoked", () => {
+    it("keeps and returns the first revocation", async () => {
+      const user = await userWithName();
+      const fingerprint = await publishFirstKey(user);
+      await revoke(user, fingerprint, "first");
+
+      const result = await revoke(user, fingerprint, "second");
+
+      expect(result).toBe("first");
+    });
+  });
+
+  describe("when the key is an older, replaced key of the user", () => {
+    it("returns the stored revocation", async () => {
+      const user = await userWithName();
+      const first = await publishFirstKey(user);
+      const second = uniqueFingerprint();
+      await publish(user, await createChallenge(user.id, second), second, first);
+
+      const result = await revoke(user, first, "old");
+
+      expect(result).toBe("old");
+    });
+  });
+
+  describe("when the key belongs to another user", () => {
+    it("fails with bad_request", async () => {
+      const owner = await userWithName();
+      const fingerprint = await publishFirstKey(owner);
+      const user = await userWithName();
+
+      const result = revoke(user, fingerprint);
+
+      await expect(result).rejects.toMatchObject({ code: "WX003" });
+    });
+  });
+});
+
+describe("own_key", () => {
+  describe("when the key is the user's", () => {
+    it("returns its fingerprint", async () => {
+      const user = await userWithName();
+      const fingerprint = await publishFirstKey(user);
+
+      const result = await as(
+        { role: "service_role" },
+        (tx) => tx`select fingerprint from service.own_key(${user.id}, ${fingerprint})`,
+      );
+
+      expect(result[0]?.fingerprint).toBe(fingerprint);
+    });
+  });
+
+  describe("when the key belongs to another user", () => {
+    it("returns no row", async () => {
+      const owner = await userWithName();
+      const fingerprint = await publishFirstKey(owner);
+      const user = await userWithName();
+
+      const result = await as(
+        { role: "service_role" },
+        (tx) => tx`select * from service.own_key(${user.id}, ${fingerprint})`,
+      );
+
+      expect(result.length).toBe(0);
+    });
+  });
+});
+
 describe("current_key", () => {
   describe("when the user replaced a key", () => {
     it("returns the newer key", async () => {
@@ -250,6 +354,23 @@ describe("current_key", () => {
       );
 
       expect(result[0]?.nonce).toBe(nonce);
+    });
+  });
+
+  describe("when the user's newest key is revoked", () => {
+    it("returns no row (the key it replaced doesn't come back)", async () => {
+      const user = await userWithName();
+      const first = await publishFirstKey(user);
+      const second = uniqueFingerprint();
+      await publish(user, await createChallenge(user.id, second), second, first);
+      await revoke(user, second);
+
+      const result = await as(
+        { role: "service_role" },
+        (tx) => tx`select * from service.current_key(${user.id})`,
+      );
+
+      expect(result.length).toBe(0);
     });
   });
 

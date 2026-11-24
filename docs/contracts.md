@@ -21,7 +21,7 @@ How the browser talks to Supabase, per flow. Statement formats: `docs/statements
 | Remove a proof        | `api.remove_github_proof(id)`                                       | —                                                              |
 | Get message command   | `message-template` `{to}` → `{command}` (`Id`, `Sent` filled in)    | reads both current keys                                        |
 | Send a message        | `send-message` `{signed}`                                           | `service.store_message`, notification email                    |
-| Revoke a key          | `revoke-key` `{revocation}`                                         | `service.revoke_key`                                           |
+| Revoke a key          | `revoke-key` `{fingerprint, revocation}`                            | `service.own_key`, `service.revoke_key` (first one is kept)    |
 | View a profile        | `api.profile(username)`                                             | —                                                              |
 | Search                | `api.search(query)`                                                 | —                                                              |
 | Inbox / outbox        | `api.inbox()`, `api.outbox()`, `api.message(id)`                    | —                                                              |
@@ -64,6 +64,21 @@ resends the same body (the response may have been lost after the key was publish
 | ------------- | ---------------------------------------------------------------------------------- |
 | `bad_request` | bad key or signatures; Origin, User or Fingerprint wrong; unknown or expired nonce |
 | `conflict`    | challenge already used; key already published; the current key changed meanwhile   |
+
+### `revoke-key` `{fingerprint, revocation}` → `{fingerprint}`
+
+Revokes one of the caller's keys, current or replaced. `revocation` is an OpenPGP revocation
+certificate: `gpg --gen-revoke <FPR>` output, or the one gpg pre-generated in
+`~/.gnupg/openpgp-revocs.d/<FPR>.rev` (its leading `:` is accepted). Stores it and rewrites
+`keys/<FINGERPRINT>.asc` with it merged in. A revoked key is never current again (the key it
+replaced doesn't come back); the next key is published with the new key's signature alone.
+
+Idempotent: on an already revoked key it keeps the first revocation and rewrites the file from it.
+
+| Error         | When                                                           |
+| ------------- | -------------------------------------------------------------- |
+| `bad_request` | not one of the caller's keys; not a valid revocation for it    |
+| `unavailable` | the revocation is saved but the key file wasn't written: retry |
 
 ## Keys
 

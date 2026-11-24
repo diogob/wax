@@ -50,6 +50,13 @@ export type Database = {
           replaced_public_key: string;
         }[];
       };
+      own_key: {
+        Args: { fingerprint: string; user_id: string };
+        Returns: {
+          fingerprint: string;
+          public_key: string;
+        }[];
+      };
       publish_key: {
         Args: {
           fingerprint: string;
@@ -59,6 +66,10 @@ export type Database = {
           user_id: string;
           username: string;
         };
+        Returns: string;
+      };
+      revoke_key: {
+        Args: { fingerprint: string; revocation: string; user_id: string };
         Returns: string;
       };
     };

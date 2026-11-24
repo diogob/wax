@@ -88,6 +88,20 @@ async function certifiers(armored: string): Promise<string[]> {
   );
 }
 
+// The revocation certificate gpg pre-generates for every new key (what users paste if they
+// lost the key): openpgp-revocs.d/<FPR>.rev, armor line prefixed with ":".
+function revocationCertificate(key: GpgKey): Promise<string> {
+  return Deno.readTextFile(`${key.home}/openpgp-revocs.d/${key.fingerprint}.rev`);
+}
+
+// gpg's validity for an armored key after importing it into a fresh keyring: "r" if revoked.
+async function importedValidity(armored: string): Promise<string> {
+  const home = await Deno.makeTempDir({ dir: "/tmp", prefix: "wax-gpg-" });
+  await gpg(home, ["--import"], armored);
+  const colons = await gpg(home, ["--with-colons", "--list-keys"]);
+  return colons.split("\n").find((line) => line.startsWith("pub:"))!.split(":")[1]!;
+}
+
 // `key`'s public key with `count` more user IDs.
 async function withExtraUserIds(key: GpgKey, count: number): Promise<string> {
   for (let index = 0; index < count; index++) {
@@ -136,7 +150,9 @@ export {
   clearsignWithBoth,
   createGpgKey,
   exportSecretKey,
+  importedValidity,
   killAgent,
+  revocationCertificate,
   signEncrypt,
   withExtraUserIds,
 };

@@ -55,5 +55,6 @@ Pages and user flows. Calls: `docs/contracts.md`. Statements: `docs/statements.m
    - `ignored`: not listed.
 6. **Outbox**: recipient and time; a message downloads as `wax-sent-to-<user>-<id>.asc`, then
    `gpg --decrypt <file>` (messages are encrypted to the sender too; no import needed).
-7. **Settings**: replace key (same as publishing), revoke key (drop the `gpg --gen-revoke` output
-   file), ignored senders with "Un-ignore", delete account, sign out.
+7. **Settings**: replace key (same as publishing), revoke any of your keys (drop the
+   `gpg --gen-revoke` output file, or the `openpgp-revocs.d/<FPR>.rev` gpg made with the key),
+   ignored senders with "Un-ignore", delete account, sign out.

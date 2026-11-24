@@ -73,6 +73,37 @@ async function readKeyToPublish(armored: string): Promise<PublishableKey> {
   };
 }
 
+/** A published key with a verified revocation merged in: what its key file serves. */
+type RevokedKey = {
+  readonly fingerprint: string;
+  readonly armored: string;
+  readonly [checked]: true;
+};
+
+// Edge Functions use keys.revokeOwnKey, which only accepts the caller's own stored key.
+// Merges a revocation certificate into `armoredKey`, after checking it is a valid revocation
+// of that key. Accepts the certificate gpg pre-generates in openpgp-revocs.d/, whose armor
+// line starts with ":" so it can't be imported by accident.
+async function revokeKey(armoredKey: string, revocation: string): Promise<RevokedKey> {
+  const key = await readPublicKey(armoredKey);
+  const certificate = revocation.replace(/^:(?=-----BEGIN )/m, "");
+  let revoked: openpgp.PublicKey;
+  try {
+    const result = await openpgp.revokeKey({
+      key,
+      revocationCertificate: certificate,
+      format: "object",
+    });
+    revoked = result.publicKey;
+  } catch {
+    throw new WaxError(
+      "bad_request",
+      `not a valid revocation certificate for key ${fingerprint(key)}`,
+    );
+  }
+  return { fingerprint: fingerprint(revoked), armored: revoked.armor(), [checked]: true };
+}
+
 // Verifies a clearsigned paste and returns the signed text (and only that). It must carry
 // exactly one valid signature by each of `armoredKeys` and nothing else.
 async function verifyClearsigned(armored: string, armoredKeys: string[]): Promise<string> {
@@ -105,5 +136,5 @@ async function verifyClearsigned(armored: string, armoredKeys: string[]): Promis
   return data;
 }
 
-export { readKeyToPublish, verifyClearsigned };
-export type { PublishableKey };
+export { readKeyToPublish, revokeKey, verifyClearsigned };
+export type { PublishableKey, RevokedKey };

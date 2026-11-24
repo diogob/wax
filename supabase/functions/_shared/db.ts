@@ -23,4 +23,7 @@ function userClient(authorization: string) {
   );
 }
 
+type ServiceClient = ReturnType<typeof serviceClient>;
+
 export { serviceClient, userClient };
+export type { ServiceClient };

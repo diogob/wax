@@ -75,4 +75,5 @@ checked by the recipient's `gpg --decrypt`.
 
 ## Revocation
 
-No Wax statement: the user pastes the revocation certificate from `gpg --gen-revoke`.
+No Wax statement: the user pastes an OpenPGP revocation certificate (`gpg --gen-revoke`, or
+`openpgp-revocs.d/<FPR>.rev`). It can be merged into the key file, which a statement couldn't.

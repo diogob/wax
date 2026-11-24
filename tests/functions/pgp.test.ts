@@ -1,6 +1,10 @@
 import { after, before, describe, it } from "node:test";
 import { expect } from "@std/expect";
-import { readKeyToPublish, verifyClearsigned } from "../../supabase/functions/_shared/pgp.ts";
+import {
+  readKeyToPublish,
+  revokeKey,
+  verifyClearsigned,
+} from "../../supabase/functions/_shared/pgp.ts";
 import {
   certifiedBy,
   certifiers,
@@ -159,6 +163,18 @@ describe("verifyClearsigned with two keys", () => {
       const result = verifyClearsigned(signed, keys);
 
       await expect(result).rejects.toThrow(bob.fingerprint);
+    });
+  });
+});
+
+describe("revokeKey", () => {
+  describe("when given a signed text instead of a certificate", () => {
+    it("throws instead of merging it", async () => {
+      const signed = await clearsign(alice, text);
+
+      const result = revokeKey(alice.publicKey, signed);
+
+      await expect(result).rejects.toThrow("not a valid revocation certificate");
     });
   });
 });

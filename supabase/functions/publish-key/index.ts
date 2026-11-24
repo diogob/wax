@@ -6,17 +6,18 @@
 //   this key             retry of the request that published it (the response was lost, or
 //                        the file upload failed): verified as the first time, only the file
 //                        is written again. Clients offer "Retry" and resend the same body.
-import { fromRpc, json, WaxError } from "../_shared/errors.ts";
-import { serviceClient } from "../_shared/db.ts";
+import { type ServiceClient, serviceClient } from "../_shared/db.ts";
+import { json, WaxError } from "../_shared/errors.ts";
+import {
+  type PublishedKey,
+  readCurrentKey,
+  type ReplacedKey,
+  storeKey,
+  writeKeyFile,
+} from "../_shared/keys.ts";
 import { type PublishableKey, readKeyToPublish, verifyClearsigned } from "../_shared/pgp.ts";
 import { readStrings, serveAuthenticated, siteUrl } from "../_shared/serve.ts";
 import { type KeyChallenge, parseKeyChallenge } from "../_shared/statements.ts";
-
-type Service = ReturnType<typeof serviceClient>;
-// Derived from what current_key returns, narrowed to what each function needs.
-type CurrentKeyRow = NonNullable<Awaited<ReturnType<typeof readCurrentKey>>>;
-type ReplacedKey = Pick<CurrentKeyRow, "fingerprint">;
-type PublishedKey = Pick<CurrentKeyRow, "fingerprint" | "public_key" | "nonce">;
 
 serveAuthenticated(async (req, { userId }) => {
   const { publicKey, signed } = await readStrings(req, ["publicKey", "signed"]);
@@ -45,28 +46,21 @@ serveAuthenticated(async (req, { userId }) => {
 });
 
 async function publishOrReplaceKey(
-  service: Service,
+  service: ServiceClient,
   userId: string,
   key: PublishableKey,
   challenge: KeyChallenge,
   replacing?: ReplacedKey,
 ): Promise<void> {
-  const { error } = await service.rpc("publish_key", {
-    user_id: userId,
-    username: challenge.user,
-    nonce: challenge.nonce,
-    fingerprint: key.fingerprint,
-    public_key: key.armored,
-    replaces: replacing?.fingerprint,
-  });
-  if (error) throw fromRpc(error);
+  await storeKey(service, userId, key, challenge, replacing);
   await writeKeyFile(service, key.fingerprint, key.armored);
 }
 
 // Only the request that published the key is a retry; any other is a duplicate. Writes what
-// the database stored, so the file always matches it.
+// the database stored, so the file always matches it. Overwriting is safe: a revoked key is
+// never current, so its file (which carries the revocation) is never rewritten here.
 async function retryPublish(
-  service: Service,
+  service: ServiceClient,
   currentKey: PublishedKey,
   challenge: KeyChallenge,
 ): Promise<void> {
@@ -74,12 +68,6 @@ async function retryPublish(
     throw new WaxError("conflict", "this key is already published");
   }
   await writeKeyFile(service, currentKey.fingerprint, currentKey.public_key);
-}
-
-async function readCurrentKey(service: Service, userId: string) {
-  const { data, error } = await service.rpc("current_key", { user_id: userId });
-  if (error) throw fromRpc(error);
-  return data[0];
 }
 
 // Verifies `signed` is the challenge for `key`, signed by it and by each of `otherSigners`.
@@ -97,22 +85,4 @@ async function verifyChallenge(
     throw new WaxError("bad_request", "the statement is for another key");
   }
   return challenge;
-}
-
-// Overwriting is safe: the content only ever comes from the stored key, and a revoked key
-// (step 3) is no longer current, so its file is never rewritten here.
-async function writeKeyFile(
-  service: Service,
-  fingerprint: string,
-  armored: string,
-): Promise<void> {
-  const { error } = await service.storage.from("keys").upload(`${fingerprint}.asc`, armored, {
-    contentType: "application/pgp-keys",
-    cacheControl: "86400",
-    upsert: true,
-  });
-  if (error) {
-    console.error(error);
-    throw new WaxError("unavailable", "your key is published, but its file wasn't saved; retry");
-  }
 }
