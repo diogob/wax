@@ -44,11 +44,13 @@ function CopyBox({ text, hint }: { text: string; hint?: string }) {
     setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <div class="copybox">
-      <pre>{text}</pre>
-      <button type="button" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
+    <>
+      <div class="copybox">
+        <pre>{text}</pre>
+        <button type="button" onClick={copy}>{copied ? "Copied ✓" : "Copy command"}</button>
+      </div>
       {hint && <p class="hint">{hint}</p>}
-    </div>
+    </>
   );
 }
 
@@ -166,7 +168,9 @@ function Nav() {
           <>
             <a href="#/inbox">Inbox{unread > 0 && ` (${unread})`}</a>
             <a href="#/outbox">Outbox</a>
-            <a href="#/me">{user.username ? `@${user.username}` : "Finish sign-up"}</a>
+            <a href="#/me">
+              {user.username ? <Handle username={user.username} /> : "Finish sign-up"}
+            </a>
             <a href="#/settings">Settings</a>
           </>
         )
@@ -274,14 +278,72 @@ function Login() {
   );
 }
 
+// A wax seal stamped with the user's initial. The blob's outline is derived from the username, so
+// each user's seal keeps the same shape. Colour comes from the CSS variable --wax (configurable
+// per user later).
+function sealOutline(username: string): string {
+  const seed = [...username].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7);
+  // A number in [0, 1) per point and purpose, from the seed; the same every render.
+  const random = (index: number, salt: number) => {
+    const mixed = Math.imul(seed ^ (index * 2654435761) ^ (salt * 40503), 2246822519);
+    return ((mixed ^ (mixed >>> 15)) >>> 0) / 2 ** 32;
+  };
+  const count = 13;
+  const points = Array.from({ length: count }, (_, index) => {
+    // Lumps from just outside the ring (13.5) to the edge of the box (20).
+    const radius = 13.5 + random(index, 1) ** 0.7 * 6.5;
+    const angle = ((index + (random(index, 2) - 0.5) * 0.6) / count) * 2 * Math.PI;
+    return { x: 20 + radius * Math.cos(angle), y: 20 + radius * Math.sin(angle) };
+  });
+  // Smooth closed curve: each point is a control point, midpoints are on the curve.
+  const midpoint = (index: number) => {
+    const from = points[index % count]!;
+    const to = points[(index + 1) % count]!;
+    return `${((from.x + to.x) / 2).toFixed(2)} ${((from.y + to.y) / 2).toFixed(2)}`;
+  };
+  const curves = points.map((point, index) =>
+    `Q ${point.x.toFixed(2)} ${point.y.toFixed(2)} ${midpoint(index)}`
+  );
+  return `M ${midpoint(count - 1)} ${curves.join(" ")} Z`;
+}
+
+function Seal({ username }: { username: string }) {
+  const initial = username[0]!.toUpperCase();
+  return (
+    <svg class="seal" viewBox="0 0 40 40" aria-hidden="true">
+      <path class="seal-wax" d={sealOutline(username)} />
+      <circle class="seal-ring" cx="20" cy="20" r="11.5" />
+      <text class="seal-shine" x="20" y="20.8">{initial}</text>
+      <text class="seal-letter" x="20" y="20">{initial}</text>
+    </svg>
+  );
+}
+
+function Handle({ username }: { username: string }) {
+  return (
+    <span class="handle">
+      <Seal username={username} />
+      <span>@{username}</span>
+    </span>
+  );
+}
+
 function ProfileSummary({ profile, link }: { profile: Profile; link?: boolean }) {
   const key = currentKey(profile);
   const verified = profile.proofs.filter((proof) => !proof.stale);
   return (
     <div class="summary">
       {link
-        ? <a href={`#/u/${profile.username}`}>@{profile.username}</a>
-        : <strong>@{profile.username}</strong>}
+        ? (
+          <a href={`#/u/${profile.username}`}>
+            <Handle username={profile.username} />
+          </a>
+        )
+        : (
+          <strong>
+            <Handle username={profile.username} />
+          </strong>
+        )}
       <span>
         {key ? `key published ${ago(key.published)}` : "no key"}
         {" · "}
@@ -300,7 +362,9 @@ function ProfilePage({ username }: { username: string }) {
   const isMe = session.value?.username === username;
   return (
     <>
-      <h1>@{profile.username}</h1>
+      <h1>
+        <Handle username={profile.username} />
+      </h1>
       <h2>Key</h2>
       {key ? <code>{short(key.fingerprint)}</code> : <p>No published key.</p>}
       <h2>GitHub</h2>
@@ -489,85 +553,81 @@ function PublishKey({ replacing }: { replacing?: boolean }) {
   );
 }
 
+// One page of numbered steps; each step appears once the previous one is done.
 function GithubProof() {
+  const [typed, setTyped] = useState("");
   const [github, setGithub] = useState("");
-  const [statement, setStatement] = useState("");
-  const [signed, setSigned] = useState(false);
+  const [createdAt, setCreatedAt] = useState("");
   const key = currentKey(me.value);
   const username = session.value?.username;
   if (!username || !key) return <RequireSignIn />;
 
-  if (!statement) {
-    return (
-      <>
-        <Steps current={0} names={["GitHub username", "Sign", "Gist"]} />
-        <h1>Add a GitHub proof</h1>
-        <p>Links your GitHub account to this key, through a public gist only you could create.</p>
-        <input
-          placeholder="GitHub username"
-          value={github}
-          onInput={(event) => setGithub(event.currentTarget.value)}
-        />
-        <button
-          type="button"
-          disabled={!github}
-          onClick={() =>
-            setStatement([
-              "Wax github proof v1",
-              `Origin: ${SITE}`,
-              `User: ${username}`,
-              `GitHub: ${github}`,
-              `Fingerprint: ${key.fingerprint}`,
-              `Created: ${now()}`,
-            ].join("\n"))}
-        >
-          Next
-        </button>
-      </>
-    );
-  }
-
-  if (!signed) {
-    return (
-      <>
-        <Steps current={1} names={["GitHub username", "Sign", "Gist"]} />
-        <h1>Sign the proof</h1>
-        <p>You'll put the signed file in a gist next.</p>
-        <CopyBox
-          text={clearsignCommand(statement, `wax-github-proof-${github}.asc`)}
-          hint={`gpg asks for your passphrase, then writes wax-github-proof-${github}.asc.`}
-        />
-        <button type="button" onClick={() => setSigned(true)}>Next</button>
-      </>
-    );
-  }
+  const file = `wax-github-proof-${github}.asc`;
+  const statement = [
+    "Wax github proof v1",
+    `Origin: ${SITE}`,
+    `User: ${username}`,
+    `GitHub: ${github}`,
+    `Fingerprint: ${key.fingerprint}`,
+    `Created: ${createdAt}`,
+  ].join("\n");
 
   return (
     <>
-      <Steps current={2} names={["GitHub username", "Sign", "Gist"]} />
-      <h1>Post it as a gist</h1>
+      <h1>Add a GitHub proof</h1>
+      <p>Links your GitHub account to this key, through a public gist only you could create.</p>
       <ol>
         <li>
-          Open <a href="https://gist.github.com" target="_blank">gist.github.com</a> as @{github}.
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              setGithub(typed.trim());
+              setCreatedAt(now());
+            }}
+          >
+            <input
+              placeholder="GitHub username"
+              value={typed}
+              onInput={(event) => setTyped(event.currentTarget.value)}
+            />
+            <button type="submit" disabled={!typed.trim() || typed.trim() === github}>
+              {github ? "Change" : "Next"}
+            </button>
+          </form>
         </li>
-        <li>
-          Drag <code>wax-github-proof-{github}.asc</code> into the gist, then create a public gist.
-        </li>
-        <li>Paste the gist's URL here.</li>
+        {github && (
+          <>
+            <li>
+              Sign the proof:
+              <CopyBox
+                text={clearsignCommand(statement, file)}
+                hint={`gpg asks for your passphrase, then writes ${file}.`}
+              />
+            </li>
+            <li>
+              Open <a href="https://gist.github.com" target="_blank">gist.github.com</a>{" "}
+              as @{github} and drag <code>{file}</code> into it, then create a{" "}
+              <strong>public</strong> gist.
+            </li>
+            <li>
+              Paste the gist's URL:
+              <GistUrl
+                github={github}
+                onVerified={() => {
+                  updateProfile(username, (profile) => ({
+                    ...profile,
+                    proofs: [
+                      { github, created: now(), stale: false },
+                      ...profile.proofs.filter((proof) => proof.github !== github),
+                    ],
+                  }));
+                  go("#/me");
+                }}
+              />
+            </li>
+          </>
+        )}
       </ol>
-      <GistUrl
-        onVerified={() => {
-          updateProfile(username, (profile) => ({
-            ...profile,
-            proofs: [
-              { github, created: now(), stale: false },
-              ...profile.proofs.filter((proof) => proof.github !== github),
-            ],
-          }));
-          go("#/me");
-        }}
-        github={github}
-      />
     </>
   );
 }
@@ -633,7 +693,9 @@ function Send({ username }: { username: string }) {
 
   return (
     <>
-      <h1>Message @{username}</h1>
+      <h1>
+        Message <Handle username={username} />
+      </h1>
       <ProfileSummary profile={recipient} />
       <ol>
         <li>
@@ -704,7 +766,9 @@ function Inbox() {
           if (trustOf(message.from) === "accepted") {
             return (
               <li class={message.read ? "" : "unread"}>
-                <a href={`#/inbox/${message.id}`}>@{message.from}</a>
+                <a href={`#/inbox/${message.id}`}>
+                  <Handle username={message.from} />
+                </a>
                 <span>{ago(message.sent)}</span>
               </li>
             );
@@ -769,7 +833,9 @@ function MessagePage({ id, box }: { id: string; box: "inbox" | "outbox" }) {
         <p>
           <a href="#/outbox">← Outbox</a>
         </p>
-        <h1>To @{other}</h1>
+        <h1>
+          To <Handle username={other} />
+        </h1>
         <p>Sent {ago(message.sent)}.</p>
         <ol>
           <li>
@@ -795,7 +861,9 @@ function MessagePage({ id, box }: { id: string; box: "inbox" | "outbox" }) {
       <p>
         <a href="#/inbox">← Inbox</a>
       </p>
-      <h1>From @{other}</h1>
+      <h1>
+        From <Handle username={other} />
+      </h1>
       <p>
         Sent {ago(message.sent)}, signed with key <code>{short(senderKey.fingerprint)}</code>.
       </p>
@@ -828,7 +896,9 @@ function Outbox() {
       <ul class="messages">
         {sent.map((message) => (
           <li>
-            <a href={`#/outbox/${message.id}`}>To @{message.to}</a>
+            <a href={`#/outbox/${message.id}`}>
+              To <Handle username={message.to} />
+            </a>
             <span>{ago(message.sent)}</span>
           </li>
         ))}
@@ -872,7 +942,7 @@ function Settings() {
       <ul>
         {ignored.map((sender) => (
           <li>
-            @{sender}{" "}
+            <Handle username={sender} />{" "}
             <button
               type="button"
               class="secondary"

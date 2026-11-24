@@ -10,10 +10,14 @@ Pages and user flows. Calls: `docs/contracts.md`. Statements: `docs/statements.m
   refer to later (e.g. the GitHub proof is uploaded to the gist as that file). Messages are
   downloaded as files too. Names include the fingerprint or message id, so they never collide.
 - One copy button per page. A flow that needs more than one command becomes a wizard, one page per
-  command (decided per flow).
+  command (decided per flow). A flow with one command is a single page of numbered steps, each shown
+  once the previous one is done.
 - Messages have no subject: everything a sender writes is encrypted. A cold message is judged by its
   sender's profile, GitHub proofs and key history, so the inbox shows these prominently.
 - Profiles and search are public (no sign-in needed).
+- Every Wax handle is shown with its seal: an SVG wax seal stamped with the username's first letter.
+  The outline is derived from the username, so it stays the same. Wax colour is one CSS variable
+  (`--wax`), later chosen per user. Pages never load anything from third parties.
 
 ## Pages
 
@@ -33,8 +37,9 @@ Pages and user flows. Calls: `docs/contracts.md`. Statements: `docs/statements.m
    here) → publish key: enter its fingerprint → copy the export command → drop the file → copy the
    challenge command → drop its output file → `#/me`. Without a key you can browse but not send or
    receive; the page says why.
-2. **GitHub proof** (`#/me`): enter GitHub username → copy the proof command → create a public gist
-   from the output file → paste its URL → verified, or the reason it failed.
+2. **GitHub proof** (`#/me`, one page of numbered steps): enter GitHub username → copy the proof
+   command → create a public gist from the output file → paste its URL → verified, or the reason it
+   failed.
 3. **Send**: search or open a profile (fingerprint, proofs, stale proofs after a key change, key
    history) → "Send message" (one page) → download `wax-key-<user>-<fingerprint>.asc` → copy the
    command, which encrypts to that file with `gpg -f` (no import), type the message → drop its

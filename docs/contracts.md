@@ -40,6 +40,25 @@ claimed, it can't be changed.
 | `WX003` | invalid format                                      |
 | `WX004` | caller already has a username, or the name is taken |
 
+## Avatars
+
+Deferred: handles show a seal for now (`docs/ui.md`). If avatars come back, this is the plan.
+
+Viewers never contact GitHub: a page that loads `github.com/<user>.png` tells GitHub who looks at
+which profile. Wax keeps its own copy instead.
+
+- `verify-proof` downloads the avatar after the proof verifies, server side, and uploads it to the
+  public Storage bucket `avatars` as `<proof id>`. Only the service role writes to the bucket.
+- Accepted: PNG, JPEG, GIF or WebP, checked by magic bytes, not the response's content type; at most
+  1 MB. The object is stored with the content type matching the magic bytes. A failed or rejected
+  download does not fail the proof; the profile shows the placeholder.
+- The copy is refreshed only when the proof is verified again. A proof made with an older key
+  (stale) has no avatar.
+- Removing a proof, or deleting the account, deletes its object.
+- `api.profile` (and every composite carrying a handle) returns `avatar`: the object path of the
+  user's most recent fresh proof, or null. The client builds the URL from the Supabase project URL.
+- The client's CSP allows images only from the Supabase project.
+
 ## Trust
 
 Anyone with a published key can message anyone with one. Each recipient privately rates senders;
