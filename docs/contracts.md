@@ -40,6 +40,30 @@ claimed, it can't be changed.
 | `WX003` | invalid format                                      |
 | `WX004` | caller already has a username, or the name is taken |
 
+## Keys
+
+Rules for publishing and serving keys (step 2).
+
+- **Replacing needs the old key.** `publish-key` for a user who already has a current key requires
+  the challenge to be signed by both the new and the current key. A user who lost the old key
+  revokes it first (`revoke-key`, visible on the profile), then publishes. A stolen account (magic
+  link) can therefore not swap the key silently.
+- **User IDs are public.** Before publishing, the client shows the key's user IDs (usually
+  `Name <email>`) and says they become public. Users who mind publish a key made for Wax.
+- **Stored keys are cleaned.** `publish-key` stores a minimal copy: primary key, self-signatures,
+  user IDs and subkeys only (no third-party signatures, no attributes such as photos). It rejects
+  keys over 64 KB armored, with more than 10 user IDs or more than 10 subkeys. Everything Wax serves
+  is this copy (SKS-style poisoning can't reach importers).
+- **Key URL, by fingerprint.** On publish, the cleaned key is written to the public Storage bucket
+  `keys` as `<FINGERPRINT>.asc` (40 uppercase hex; never short IDs), with
+  `Content-Type: application/pgp-keys`. Only the service role writes. There is no URL by username: a
+  link always serves the key it names, so taking over an account can't redirect shared links.
+  Importers check that gpg prints the fingerprint in the URL.
+- **Keys URLs never disappear.** Replacing a key leaves its object in place. Revoking rewrites the
+  object with the revocation signature merged in, so importing an old link marks the key revoked.
+  Cache: 1 day; a revocation can take that long to reach caches.
+- Account deletion keeps revoked key objects (they warn importers) and deletes the rest.
+
 ## Avatars
 
 Deferred: handles show a seal for now (`docs/ui.md`). If avatars come back, this is the plan.
