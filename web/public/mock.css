@@ -118,6 +118,81 @@ nav .brand {
   letter-spacing: 0.02em;
 }
 
+/* A quiet icon: no border or fill, muted until hovered. */
+.theme {
+  display: grid;
+  place-items: center;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.theme:hover:not(:disabled) {
+  color: var(--fg);
+  filter: none;
+}
+
+nav .links {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.menu {
+  position: relative;
+  display: none;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+}
+
+.menu:hover:not(:disabled) {
+  filter: none;
+}
+
+/* Unread messages, while the menu is closed. */
+.menu .dot {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.1rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+@media (max-width: 36rem) {
+  nav {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .menu {
+    display: grid;
+    place-items: center;
+  }
+
+  nav .links {
+    display: none;
+    order: 1;
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  nav.open .links {
+    display: flex;
+  }
+
+  nav .links a {
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--line);
+  }
+}
+
 /* Forms */
 
 input,
@@ -385,6 +460,42 @@ button.mock {
   padding-left: 2.1em;
   color: var(--muted);
   font-size: 0.875rem;
+}
+
+/* Keys */
+
+/* One click selects the whole fingerprint, ready to copy. */
+.fingerprint {
+  user-select: all;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
+.keys {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.keys li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0.6rem 0;
+}
+
+.keys li + li {
+  border-top: 1px solid var(--line);
+}
+
+.keys .meta {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.keys .meta-note {
+  margin-left: 0.5rem;
 }
 
 /* Lists */

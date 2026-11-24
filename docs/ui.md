@@ -40,17 +40,20 @@ Pages and user flows. Calls: `docs/contracts.md`. Statements: `docs/statements.m
 2. **GitHub proof** (`#/me`, one page of numbered steps): enter GitHub username → copy the proof
    command → create a public gist from the output file → paste its URL → verified, or the reason it
    failed.
-3. **Send**: search or open a profile (fingerprint, proofs, stale proofs after a key change, key
+3. **Profile key**: the current key shows `curl -sf <key URL> | gpg --import` (the one copy button);
+   each key in history links to its key URL (`docs/contracts.md` `## Keys`). Publishing shows the
+   key's user IDs, which become public.
+4. **Send**: search or open a profile (fingerprint, proofs, stale proofs after a key change, key
    history) → "Send message" (one page) → download `wax-key-<user>-<fingerprint>.asc` → copy the
    command, which encrypts to that file with `gpg -f` (no import), type the message → drop its
    output file. If one knock applies, say so.
-4. **Inbox**: rows show sender, time and trust.
+5. **Inbox**: rows show sender, time and trust.
    - `unknown`: sender's profile summary, "Show message" and "Ignore".
    - `accepted`: open the message: download `wax-from-<user>-<id>.asc` and the sender's key
      `wax-key-<user>-<fingerprint>.asc`, then copy `gpg --import <key> && gpg --decrypt <file>`.
      Importing lets gpg check the inner signature; re-importing a known key is harmless.
    - `ignored`: not listed.
-5. **Outbox**: recipient and time; a message downloads as `wax-sent-to-<user>-<id>.asc`, then
+6. **Outbox**: recipient and time; a message downloads as `wax-sent-to-<user>-<id>.asc`, then
    `gpg --decrypt <file>` (messages are encrypted to the sender too; no import needed).
-6. **Settings**: replace key (same as publishing), revoke key (drop the `gpg --gen-revoke` output
+7. **Settings**: replace key (same as publishing), revoke key (drop the `gpg --gen-revoke` output
    file), ignored senders with "Un-ignore", delete account, sign out.

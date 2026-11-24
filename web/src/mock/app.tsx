@@ -154,27 +154,105 @@ function Notice({ children }: { children: ComponentChildren }) {
 // Layout
 // ---------------------------------------------------------------------------
 
+// System → light → dark. The CSS uses light-dark(), which follows color-scheme on <html>.
+const themes = ["system", "light", "dark"] as const;
+type Theme = (typeof themes)[number];
+// 16px line icons, drawn with currentColor.
+const themeIcons: Record<Theme, string> = {
+  system: "M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Z",
+  light:
+    "M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3 3l1 1M12 12l1 1M3 13l1-1M12 4l1-1",
+  dark: "M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7Z",
+};
+
+function applyTheme(theme: Theme) {
+  document.documentElement.style.colorScheme = theme === "system" ? "light dark" : theme;
+}
+
+function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem("wax-theme") as Theme | null) ?? "system",
+  );
+  useEffect(() => {
+    applyTheme(theme);
+    localStorage.setItem("wax-theme", theme);
+  }, [theme]);
+  const next = themes[(themes.indexOf(theme) + 1) % themes.length]!;
+  return (
+    <button
+      type="button"
+      class="theme"
+      title={`Theme: ${theme}. Click for ${next}.`}
+      aria-label={`Theme: ${theme}`}
+      onClick={() => setTheme(next)}
+    >
+      <svg
+        viewBox="0 0 16 16"
+        width="15"
+        height="15"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d={themeIcons[theme]} />
+        {theme === "system" && <path fill="currentColor" d="M8 2a6 6 0 0 0 0 12Z" />}
+      </svg>
+    </button>
+  );
+}
+
+// On narrow screens the signed-in links fold behind a menu button (CSS decides when).
 function Nav() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [route.value]);
   const user = session.value;
   const unread =
     messages.value.filter((message) =>
       message.to === user?.username && !message.read && trustOf(message.from) !== "ignored"
     ).length;
   return (
-    <nav>
+    <nav class={open ? "open" : ""}>
       <a href="#/" class="brand">Wax</a>
       {user
         ? (
-          <>
+          <div class="links" id="nav-links">
             <a href="#/inbox">Inbox{unread > 0 && ` (${unread})`}</a>
             <a href="#/outbox">Outbox</a>
             <a href="#/me">
               {user.username ? <Handle username={user.username} /> : "Finish sign-up"}
             </a>
             <a href="#/settings">Settings</a>
-          </>
+          </div>
         )
         : <a href="#/login">Sign in</a>}
+      <ThemeToggle />
+      {user && (
+        <button
+          type="button"
+          class="menu"
+          aria-expanded={open}
+          aria-controls="nav-links"
+          aria-label="Menu"
+          onClick={() => setOpen(!open)}
+        >
+          <svg
+            viewBox="0 0 16 16"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d={open ? "M4 4l8 8M12 4l-8 8" : "M2.5 4.5h11M2.5 8h11M2.5 11.5h11"} />
+          </svg>
+          {!open && unread > 0 && <span class="dot" />}
+        </button>
+      )}
     </nav>
   );
 }
@@ -355,6 +433,11 @@ function ProfileSummary({ profile, link }: { profile: Profile; link?: boolean })
   );
 }
 
+// Public Storage object per key (docs/contracts.md ## Keys).
+function keyUrl(fingerprint: string): string {
+  return `https://project.supabase.co/storage/v1/object/public/keys/${fingerprint}.asc`;
+}
+
 function ProfilePage({ username }: { username: string }) {
   const profile = profiles.value[username];
   if (!profile) return <p>No user @{username}.</p>;
@@ -366,7 +449,18 @@ function ProfilePage({ username }: { username: string }) {
         <Handle username={profile.username} />
       </h1>
       <h2>Key</h2>
-      {key ? <code>{short(key.fingerprint)}</code> : <p>No published key.</p>}
+      {key
+        ? (
+          <>
+            <code class="fingerprint">{short(key.fingerprint)}</code>
+            <p>Import it:</p>
+            <CopyBox
+              text={`curl -sf ${keyUrl(key.fingerprint)} | gpg --import`}
+              hint={`Check that gpg prints ${short(key.fingerprint)}.`}
+            />
+          </>
+        )
+        : <p>No published key.</p>}
       <h2>GitHub</h2>
       {profile.proofs.length === 0 && <p>No proofs.</p>}
       <ul>
@@ -379,11 +473,20 @@ function ProfilePage({ username }: { username: string }) {
         ))}
       </ul>
       <h2>Key history</h2>
-      <ul>
-        {profile.keys.map((record) => (
+      <ul class="keys">
+        {profile.keys.map((record, index) => (
           <li>
-            <code>{short(record.fingerprint)}</code> published {ago(record.published)}
-            {record.revoked && <span class="stale">revoked {ago(record.revoked)}</span>}
+            <code class="fingerprint">{short(record.fingerprint)}</code>
+            <span class="meta">
+              <a href={keyUrl(record.fingerprint)}>key file</a>
+              {" · "}
+              published {ago(record.published)}
+              {record.revoked
+                ? <span class="stale">revoked {ago(record.revoked)}</span>
+                : index === 0
+                ? <span class="ok">current</span>
+                : <span class="meta-note">replaced</span>}
+            </span>
           </li>
         ))}
       </ul>
@@ -922,7 +1025,7 @@ function Settings() {
         ? (
           <>
             <p>
-              <code>{short(key.fingerprint)}</code>
+              <code class="fingerprint">{short(key.fingerprint)}</code>
             </p>
             <div class="row">
               <button type="button" onClick={() => go("#/settings/replace")}>Replace key</button>
