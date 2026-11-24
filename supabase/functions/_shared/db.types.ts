@@ -33,7 +33,34 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      create_key_challenge: {
+        Args: { fingerprint: string; user_id: string };
+        Returns: {
+          expires_at: string;
+          nonce: string;
+          username: string;
+        }[];
+      };
+      current_key: {
+        Args: { user_id: string };
+        Returns: {
+          fingerprint: string;
+          nonce: string;
+          public_key: string;
+          replaced_public_key: string;
+        }[];
+      };
+      publish_key: {
+        Args: {
+          fingerprint: string;
+          nonce: string;
+          public_key: string;
+          replaces?: string;
+          user_id: string;
+          username: string;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       [_ in never]: never;

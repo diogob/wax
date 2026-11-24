@@ -11,21 +11,21 @@ How the browser talks to Supabase, per flow. Statement formats: `docs/statements
 
 ## Flows
 
-| Flow                  | Browser calls                                                    | Server side                                                    |
-| --------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------- |
-| Choose username       | `api.claim_username(name)`                                       | —                                                              |
-| Get a key challenge   | `key-challenge` `{publicKey}` → `{challenge}`                    | `service.create_key_challenge` (stores nonce, 10 min)          |
-| Publish a key         | `publish-key` `{publicKey, signed}`                              | `service.publish_key` (uses the nonce, supersedes the old key) |
-| Get GitHub proof text | `proof-statement` `{github}` → `{statement}`                     | reads the caller's current key                                 |
-| Add GitHub proof      | `verify-proof` `{gistUrl}`                                       | fetches the gist; `service.add_github_proof`                   |
-| Remove a proof        | `api.remove_github_proof(id)`                                    | —                                                              |
-| Get message command   | `message-template` `{to}` → `{command}` (`Id`, `Sent` filled in) | reads both current keys                                        |
-| Send a message        | `send-message` `{signed}`                                        | `service.store_message`, notification email                    |
-| Revoke a key          | `revoke-key` `{revocation}`                                      | `service.revoke_key`                                           |
-| View a profile        | `api.profile(username)`                                          | —                                                              |
-| Search                | `api.search(query)`                                              | —                                                              |
-| Inbox / outbox        | `api.inbox()`, `api.outbox()`, `api.message(id)`                 | —                                                              |
-| Set trust in a sender | `api.set_trust(username, level)`                                 | —                                                              |
+| Flow                  | Browser calls                                                       | Server side                                                    |
+| --------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Choose username       | `api.claim_username(name)`                                          | —                                                              |
+| Get a key challenge   | `key-challenge` `{publicKey}` → `{challenge, fingerprint, userIds}` | `service.create_key_challenge` (stores nonce, 10 min)          |
+| Publish a key         | `publish-key` `{publicKey, signed}`                                 | `service.publish_key` (uses the nonce, supersedes the old key) |
+| Get GitHub proof text | `proof-statement` `{github}` → `{statement}`                        | reads the caller's current key                                 |
+| Add GitHub proof      | `verify-proof` `{gistUrl}`                                          | fetches the gist; `service.add_github_proof`                   |
+| Remove a proof        | `api.remove_github_proof(id)`                                       | —                                                              |
+| Get message command   | `message-template` `{to}` → `{command}` (`Id`, `Sent` filled in)    | reads both current keys                                        |
+| Send a message        | `send-message` `{signed}`                                           | `service.store_message`, notification email                    |
+| Revoke a key          | `revoke-key` `{revocation}`                                         | `service.revoke_key`                                           |
+| View a profile        | `api.profile(username)`                                             | —                                                              |
+| Search                | `api.search(query)`                                                 | —                                                              |
+| Inbox / outbox        | `api.inbox()`, `api.outbox()`, `api.message(id)`                    | —                                                              |
+| Set trust in a sender | `api.set_trust(username, level)`                                    | —                                                              |
 
 Error codes per call are added as each flow is implemented.
 
@@ -40,9 +40,34 @@ claimed, it can't be changed.
 | `WX003` | invalid format                                      |
 | `WX004` | caller already has a username, or the name is taken |
 
+### `key-challenge` `{publicKey}` → `{challenge, fingerprint, userIds}`
+
+Checks the key (limits and cleaning below; not expired or revoked; has an encryption subkey) and
+returns the statement to sign. `userIds` are shown to the user before publishing.
+
+| Error         | When                                                         |
+| ------------- | ------------------------------------------------------------ |
+| `bad_request` | not a public key, over a limit, unusable, or no username yet |
+| `conflict`    | the key is already published (on any account)                |
+
+### `publish-key` `{publicKey, signed}` → `{fingerprint}`
+
+`signed` is the challenge clearsigned by the key (`gpg --clearsign -u NEW`), plus the current key
+when replacing one (`gpg --clearsign -u NEW -u CURRENT`): exactly one valid signature per key.
+Stores the cleaned key and writes `keys/<FINGERPRINT>.asc`.
+
+Idempotent: resending the request that published the key verifies it again, skips the database and
+rewrites the file. The client shows **Retry** on `unavailable`, `internal` and network errors, and
+resends the same body (the response may have been lost after the key was published).
+
+| Error         | When                                                                               |
+| ------------- | ---------------------------------------------------------------------------------- |
+| `bad_request` | bad key or signatures; Origin, User or Fingerprint wrong; unknown or expired nonce |
+| `conflict`    | challenge already used; key already published; the current key changed meanwhile   |
+
 ## Keys
 
-Rules for publishing and serving keys (step 2).
+Rules for publishing and serving keys.
 
 - **Replacing needs the old key.** `publish-key` for a user who already has a current key requires
   the challenge to be signed by both the new and the current key. A user who lost the old key

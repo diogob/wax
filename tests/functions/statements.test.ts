@@ -8,7 +8,7 @@ import {
   parseKeyChallenge,
   parseMessage,
 } from "../../supabase/functions/_shared/statements.ts";
-import { readPublicKey, verifyClearsigned } from "../../supabase/functions/_shared/pgp.ts";
+import { verifyClearsigned } from "../../supabase/functions/_shared/pgp.ts";
 import { clearsign, createGpgKey, type GpgKey, killAgent, signEncrypt } from "../harness/gpg.ts";
 
 const origin = "http://127.0.0.1:5173";
@@ -46,7 +46,7 @@ async function message() {
 // Signs with gpg and returns the text openpgp.js verified, as an Edge Function would see it.
 async function signAndVerify(text: string): Promise<string> {
   const signed = await clearsign(alice, text);
-  return verifyClearsigned(signed, await readPublicKey(alice.publicKey));
+  return verifyClearsigned(signed, [alice.publicKey]);
 }
 
 describe("buildKeyChallenge", () => {
