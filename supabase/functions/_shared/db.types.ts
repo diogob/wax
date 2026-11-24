@@ -17,12 +17,32 @@ export type Database = {
     Functions: {
       claim_username: { Args: { name: string }; Returns: string };
       health: { Args: never; Returns: string };
+      my_username: { Args: never; Returns: string };
+      profile: {
+        Args: { username: string };
+        Returns: Database["api"]["CompositeTypes"]["profile"];
+        SetofOptions: {
+          from: "*";
+          to: "profile";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
     };
     Enums: {
       [_ in never]: never;
     };
     CompositeTypes: {
-      [_ in never]: never;
+      profile: {
+        username: string | null;
+        keys: Database["api"]["CompositeTypes"]["profile_key"][] | null;
+      };
+      profile_key: {
+        fingerprint: string | null;
+        published_at: string | null;
+        replaced_by: string | null;
+        revoked_at: string | null;
+      };
     };
   };
   service: {

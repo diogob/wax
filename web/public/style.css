@@ -1,10 +1,560 @@
+/* Styles for the app and the mock (web/mock.html adds mock.css). Light and dark follow the OS
+   (light-dark()). */
+
 :root {
   color-scheme: light dark;
-  font-family: system-ui, sans-serif;
+  --bg: light-dark(#fbfaf7, #151517);
+  --fg: light-dark(#1c1b19, #e8e6e1);
+  --muted: light-dark(#5e5b55, #a3a09a);
+  --line: light-dark(#dcd8cf, #34343a);
+  --surface: light-dark(#f1eee7, #1e1e22);
+  --accent: light-dark(#1d4ed8, #93b4ff);
+  --on-accent: light-dark(#ffffff, #0f1424);
+  --ok: light-dark(#1d6b3e, #74d39c);
+  --warn: light-dark(#8a5300, #e8b864);
+  --danger: light-dark(#b42318, #ff8f85);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 4px;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.55 system-ui, sans-serif;
 }
 
 main {
-  max-width: 48rem;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+/* Type */
+
+h1 {
+  margin: 0 0 1rem;
+  font-size: 1.6rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  margin: 2.5rem 0 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+p {
+  margin: 0 0 1rem;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+code,
+pre,
+textarea {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+:not(pre) > code {
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+ol,
+ul {
+  padding-left: 1.25rem;
+}
+
+li + li {
+  margin-top: 0.4rem;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Nav */
+
+nav {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+
+nav a {
+  color: var(--fg);
+  text-decoration: none;
+}
+
+nav a:hover {
+  color: var(--accent);
+}
+
+nav .brand {
+  margin-right: auto;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* A quiet icon: no border or fill, muted until hovered. */
+.theme {
+  display: grid;
+  place-items: center;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.theme:hover:not(:disabled) {
+  color: var(--fg);
+  filter: none;
+}
+
+nav .links {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.menu {
+  position: relative;
+  display: none;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+}
+
+.menu:hover:not(:disabled) {
+  filter: none;
+}
+
+/* Unread messages, while the menu is closed. */
+.menu .dot {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.1rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+@media (max-width: 36rem) {
+  nav {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .menu {
+    display: grid;
+    place-items: center;
+  }
+
+  nav .links {
+    display: none;
+    order: 1;
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  nav.open .links {
+    display: flex;
+  }
+
+  nav .links a {
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* Forms */
+
+input,
+textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+label {
+  display: block;
+  margin: 1rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+label input {
+  color: var(--fg);
+  font-size: 1rem;
+}
+
+label.choice {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.5rem 0;
+}
+
+label.choice input {
+  width: auto;
+  margin: 0;
+}
+
+form {
+  margin: 0;
+}
+
+button {
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.secondary {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--fg);
+}
+
+button.secondary:hover:not(:disabled) {
+  border-color: var(--fg);
+  filter: none;
+}
+
+button.danger {
+  border-color: var(--danger);
+  background: transparent;
+  color: var(--danger);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+/* Commands and files */
+
+.copybox {
+  margin: 0.75rem 0 1.25rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.copybox pre {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  background: var(--surface);
+  line-height: 1.5;
+}
+
+.copybox button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.copybox button:hover {
+  background: var(--surface);
+  filter: none;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.copybox + .hint {
+  margin-top: -0.5rem;
+}
+
+.drop {
+  display: block;
+  margin: 1rem 0 0.5rem;
+  padding: 1.5rem;
+  border: 1px dashed var(--muted);
+  border-radius: var(--radius);
+  color: var(--muted);
+  text-align: center;
+  cursor: pointer;
+}
+
+.drop:hover,
+.drop.dragging {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.drop input {
+  display: none;
+}
+
+/* Status */
+
+.error {
+  color: var(--danger);
+}
+
+.notice {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--warn);
+  background: var(--surface);
+}
+
+.ok,
+.stale {
+  margin-left: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.stale {
+  color: var(--warn);
+}
+
+/* Wizard progress */
+
+.steps {
+  display: flex;
+  gap: 1.5rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.steps li + li {
+  margin-top: 0;
+}
+
+.steps li::before {
+  content: "○ ";
+}
+
+.steps li.done::before {
+  content: "● ";
+}
+
+.steps li.current {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.steps li.current::before {
+  content: "◉ ";
+}
+
+/* People */
+
+.handle {
+  display: inline-flex;
+  gap: 0.4em;
+  align-items: center;
+  vertical-align: bottom;
+}
+
+.seal {
+  --wax: light-dark(#a3242f, #d0505a);
+  flex: none;
+  width: 1.6em;
+  height: 1.6em;
+  overflow: visible;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.25));
+}
+
+.seal-wax {
+  fill: var(--wax);
+}
+
+.seal-ring {
+  fill: var(--wax);
+  stroke: color-mix(in srgb, var(--wax) 70%, black);
+  stroke-width: 1.2;
+}
+
+.seal-letter,
+.seal-shine {
+  font: 700 17px Georgia, "Times New Roman", serif;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.seal-letter {
+  fill: color-mix(in srgb, var(--wax) 25%, black);
+}
+
+/* A light edge under the letter makes it read as pressed into the wax. */
+.seal-shine {
+  fill: color-mix(in srgb, var(--wax) 45%, white);
+  opacity: 0.75;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.summary span {
+  padding-left: 2.1em;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* Keys */
+
+/* One click selects the whole fingerprint, ready to copy. */
+.fingerprint {
+  user-select: all;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
+.keys {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.keys li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0.6rem 0;
+}
+
+.keys li + li {
+  border-top: 1px solid var(--line);
+}
+
+.keys .meta {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.keys .meta-note {
+  margin-left: 0.5rem;
+}
+
+/* Lists */
+
+.results,
+.messages {
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.results li,
+.messages li {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.messages li > span {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.messages a {
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.messages a:hover {
+  color: var(--accent);
+}
+
+.messages li.unread a {
+  font-weight: 700;
+}
+
+.messages li.unknown {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.messages li.unknown p {
+  margin: 0;
 }

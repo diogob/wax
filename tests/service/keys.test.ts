@@ -2,60 +2,17 @@ import { after, describe, it } from "node:test";
 import { expect } from "@std/expect";
 import { createTestUser } from "../harness/clients.ts";
 import { as, closeSql, sql, uniqueUsername } from "../harness/db.ts";
+import {
+  createChallenge,
+  placeholderKey,
+  publish,
+  publishFirstKey,
+  revoke,
+  uniqueFingerprint,
+  userWithName,
+} from "../harness/keys.ts";
 
 after(closeSql);
-
-// The SQL side only stores and compares; any text stands in for the armored key.
-const armored =
-  "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nAQI=\n-----END PGP PUBLIC KEY BLOCK-----\n";
-
-function uniqueFingerprint(): string {
-  return crypto.randomUUID().replaceAll("-", "").toUpperCase().padEnd(40, "0");
-}
-
-async function userWithName() {
-  const user = await createTestUser();
-  const username = uniqueUsername();
-  await user.client.rpc("claim_username", { name: username });
-  return { id: user.id, username };
-}
-
-async function createChallenge(userId: string, fingerprint: string): Promise<string> {
-  const [row] = await as(
-    { role: "service_role" },
-    (tx) => tx`select nonce from service.create_key_challenge(${userId}, ${fingerprint})`,
-  );
-  return row!.nonce;
-}
-
-function publish(
-  user: { id: string; username: string },
-  nonce: string,
-  fingerprint: string,
-  replaces: string | null = null,
-) {
-  return as({ role: "service_role" }, async (tx) => {
-    const [row] = await tx`
-      select service.publish_key(
-        ${user.id}, ${user.username}, ${nonce}, ${fingerprint}, ${armored}, ${replaces}
-      ) as fingerprint`;
-    return row!.fingerprint as string;
-  });
-}
-
-async function publishFirstKey(user: { id: string; username: string }): Promise<string> {
-  const fingerprint = uniqueFingerprint();
-  await publish(user, await createChallenge(user.id, fingerprint), fingerprint);
-  return fingerprint;
-}
-
-function revoke(user: { id: string }, fingerprint: string, revocation = "revocation") {
-  return as({ role: "service_role" }, async (tx) => {
-    const [row] = await tx`
-      select service.revoke_key(${user.id}, ${fingerprint}, ${revocation}) as revocation`;
-    return row!.revocation as string;
-  });
-}
 
 describe("create_key_challenge", () => {
   describe("when the user has a username", () => {
@@ -337,7 +294,7 @@ describe("current_key", () => {
         (tx) => tx`select replaced_public_key from service.current_key(${user.id})`,
       );
 
-      expect(result[0]?.replaced_public_key).toBe(armored);
+      expect(result[0]?.replaced_public_key).toBe(placeholderKey);
     });
   });
 

@@ -13,6 +13,7 @@ How the browser talks to Supabase, per flow. Statement formats: `docs/statements
 
 | Flow                  | Browser calls                                                       | Server side                                                    |
 | --------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Who am I              | `api.my_username()`                                                 | —                                                              |
 | Choose username       | `api.claim_username(name)`                                          | —                                                              |
 | Get a key challenge   | `key-challenge` `{publicKey}` → `{challenge, fingerprint, userIds}` | `service.create_key_challenge` (stores nonce, 10 min)          |
 | Publish a key         | `publish-key` `{publicKey, signed}`                                 | `service.publish_key` (uses the nonce, supersedes the old key) |
@@ -39,6 +40,22 @@ claimed, it can't be changed.
 | `42501` | not signed in (anon has no EXECUTE)                 |
 | `WX003` | invalid format                                      |
 | `WX004` | caller already has a username, or the name is taken |
+
+### `api.my_username()` → `name` or null
+
+The caller's username; null until they claim one (the client then sends them to choose one).
+
+| Code    | When                                |
+| ------- | ----------------------------------- |
+| `42501` | not signed in (anon has no EXECUTE) |
+
+### `api.profile(username)` → `{username, keys}`
+
+Public (anon too). `keys` is the key history, newest first:
+`{fingerprint, published_at,
+replaced_by, revoked_at}`; `replaced_by` is the key that superseded it.
+The current key is the first one, unless it is revoked. Key bodies are not included: they are served
+from the key URL (`## Keys`). For an unknown username both fields are null.
 
 ### `key-challenge` `{publicKey}` → `{challenge, fingerprint, userIds}`
 

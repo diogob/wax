@@ -19,6 +19,12 @@ Pages and user flows. Calls: `docs/contracts.md`. Statements: `docs/statements.m
   The outline is derived from the username, so it stays the same. Wax colour is one CSS variable
   (`--wax`), later chosen per user. Pages never load anything from third parties.
 
+- Errors: a failed call shows its message. On `unavailable`, `internal` and network errors it also
+  shows **Retry**, which sends the same request again (the first one may have succeeded; every call
+  is idempotent). `bad_request` and `conflict` need the user to change something.
+- The app (`web/src/app.tsx`) has sign-in, username, publish, replace and revoke. Everything else is
+  still in the mock (`/mock.html`), which loses each page once the real one exists.
+
 ## Pages
 
 | Route           | Who                 | Content                                            |
@@ -55,6 +61,7 @@ Pages and user flows. Calls: `docs/contracts.md`. Statements: `docs/statements.m
    - `ignored`: not listed.
 6. **Outbox**: recipient and time; a message downloads as `wax-sent-to-<user>-<id>.asc`, then
    `gpg --decrypt <file>` (messages are encrypted to the sender too; no import needed).
-7. **Settings**: replace key (same as publishing), revoke any of your keys (drop the
-   `gpg --gen-revoke` output file, or the `openpgp-revocs.d/<FPR>.rev` gpg made with the key),
-   ignored senders with "Un-ignore", delete account, sign out.
+7. **Settings**: replace key (same as publishing; the challenge command signs with
+   `-u NEW -u CURRENT`), revoke any of your keys that isn't revoked yet (drop the `gpg --gen-revoke`
+   output file, or the `openpgp-revocs.d/<FPR>.rev` gpg made with the key), ignored senders with
+   "Un-ignore", delete account, sign out.
